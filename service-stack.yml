@@ -1,0 +1,31 @@
+version: "3.7"
+
+services:
+  repmgr-checker:
+    image: altipeak/repmgr-checker-service:dev
+    restart: always
+    volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+            - CHECK_FREQUENCY=60
+    deploy:
+      replicas: 1
+        #      placement:
+              #        constraints: [node.hostname == MT-DEV-Node-LAN-1]
+      update_config:
+        parallelism: 1
+        delay: 15s
+        order: start-first
+        #      restart_policy:
+        #        condition: always
+        #        delay: 10s
+        #        max_attempts: 3
+        #        window: 30s
+      resources:
+        limits:
+          cpus: '0.05'
+          memory: 20M
+          #        reservations:
+          #          cpus: '0.10'
+          #          memory: 10M
+

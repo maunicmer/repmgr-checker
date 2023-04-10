@@ -1,0 +1,11 @@
+postgresql-repmgr 16:33:15.60
+postgresql-repmgr 16:33:15.60 Welcome to the Bitnami postgresql-repmgr container
+postgresql-repmgr 16:33:15.60 Subscribe to project updates by watching https://github.com/bitnami/containers
+postgresql-repmgr 16:33:15.60 Submit issues and feature requests at https://github.com/bitnami/containers/issues
+postgresql-repmgr 16:33:15.60
+
+ ID   | Name | Role    | Status    | Upstream | Location | Priority | Timeline | Connection string
+------+------+---------+-----------+----------+----------+----------+----------+-----------------------------------------------------------------------------------------
+ 1000 | pg-0 | primary | * running |          | default  | 100      | 9        | user=repmgr password=repmgrpassword host=pg-0 dbname=repmgr port=5432 connect_timeout=5
+ 1001 | pg-1 | standby |   running | pg-0     | default  | 100      | 9        | user=repmgr password=repmgrpassword host=pg-1 dbname=repmgr port=5432 connect_timeout=5
+ 1002 | pg-2 | standby |   running | pg-0     | default  | 100      | 9        | user=repmgr password=repmgrpassword host=pg-2 dbname=repmgr port=5432 connect_timeout=5

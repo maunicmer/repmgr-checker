@@ -1,0 +1,15 @@
+postgresql-repmgr 18:17:07.66
+postgresql-repmgr 18:17:07.66 Welcome to the Bitnami postgresql-repmgr container
+postgresql-repmgr 18:17:07.66 Subscribe to project updates by watching https://github.com/bitnami/containers
+postgresql-repmgr 18:17:07.66 Submit issues and feature requests at https://github.com/bitnami/containers/issues
+postgresql-repmgr 18:17:07.66
+
+ ID   | Name | Role    | Status               | Upstream | Location | Priority | Timeline | Connection string
+------+------+---------+----------------------+----------+----------+----------+----------+-----------------------------------------------------------------------------------------
+ 1000 | pg-0 | primary | * running            |          | default  | 100      | 7        | user=repmgr password=repmgrpassword host=pg-0 dbname=repmgr port=5432 connect_timeout=5
+ 1001 | pg-1 | standby | ! running as primary |          | default  | 100      | 8        | user=repmgr password=repmgrpassword host=pg-1 dbname=repmgr port=5432 connect_timeout=5
+ 1002 | pg-2 | standby |   running            | ! pg-1   | default  | 100      | 8        | user=repmgr password=repmgrpassword host=pg-2 dbname=repmgr port=5432 connect_timeout=5
+
+WARNING: following issues were detected
+  - node "pg-1" (ID: 1001) is registered as standby but running as primary
+  - node "pg-2" (ID: 1002) reports a different upstream (reported: "pg-1", expected "pg-0")
