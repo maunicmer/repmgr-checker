@@ -1,8 +1,10 @@
 #!/bin/bash -e
 
+DATA="$1"
+
 #Environment variables
 
-CHECK_FREQUENCY=${CHECK_FREQUENCY:-60}
+CHECK_FREQUENCY=${CHECK_FREQUENCY:-10}
 
 # Get the local pg ID
 
@@ -15,42 +17,46 @@ STOP_FIXING="/tmp/stop"
 function get_pg_primary_count () {
 
 	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
-	PG_NODE_COUNT="$(docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show | grep default | grep "primary" | grep "running" | wc -l)"
+	PG_NODE_COUNT="$(cat $DATA | grep default | grep "primary" | grep "running" | wc -l)"
 #	PG_NODE_COUNT=$(cat cluster_show_dummy | grep default | grep "primary" | wc -l)
 	echo $PG_NODE_COUNT
 	# unset $PG_NODE_COUNT
 }
 
+#function get_pg_to_fix (){
+#
+#	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
+#	PG_TO_FIX="$(cat $DATA | grep -v \*\ running | grep primary | awk -F '|' '{print $2}')"
+##	PG_TO_FIX=$(cat cluster_show_dummy | grep default | grep \*\ running | grep -v running\ as\ primary | awk -F '|' '{print $2}' | sed 's/ //g')
+#	echo $PG_TO_FIX
+#}
 
 function get_pg_to_fix () {
 
-# This function is used to determine the PG server node to be restarted 
+	#POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
+	PG_TO_FIX="$(cat $DATA | grep expected | awk -F " " '{print $13}' | sed 's/"\|)//g')"
 
-	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
-	PG_TO_FIX="$(docker exec $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show | grep expected | awk -F " " '{print $13}' | sed 's/"\|)//g')"
-
-# IF PG_TO_FIX is NULL it means the repmgr-checker is not running on the same node PG must be fixed
-
+	#echo $PG_TO_FIX
 if [ -z "$PG_TO_FIX"  ]
 
 then
 
-# This regular expresion takes the PG server tagged as "! running" which identifies the PG to be fixed
-
-	PG_TO_FIX="$(docker exec $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show |  grep \!\ running | awk -F "|" '{print $2}' | sed 's/^[[:blank:]]*//;s/[[:blank:]]*$//')"
+	PG_TO_FIX="$(cat $DATA |  grep \!\ running | awk -F "|" '{print $2}' | sed 's/^[[:blank:]]*//;s/[[:blank:]]*$//')"
 	echo $PG_TO_FIX
 else
 
-	PG_TO_FIX="$(docker exec $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show | grep expected | awk -F " " '{print $13}' | sed 's/"\|)//g')"
+	PG_TO_FIX="$(cat $DATA | grep expected | awk -F " " '{print $13}' | sed 's/"\|)//g')"
 	echo $PG_TO_FIX
 fi
+
+	
 
 }
 
 function wait_and_check () {
 
 ITERATION_COUNT=0
-	while [ ${ITERATION_COUNT} -lt 6 ]; 
+	while [ ${ITERATION_COUNT} -lt 6 ];
 	do
 
 		#PG_NODE_COUNT=$(cat /usr/local/bin/cluster_show_dummy)
@@ -60,7 +66,7 @@ ITERATION_COUNT=0
   				ITERATION_COUNT=$((ITERATION_COUNT + 1))
 				echo "Iteration - $ITERATION_COUNT"
 				echo "Node count - $(get_pg_primary_count)"
-  				sleep 10
+  				sleep 2
 
 			else
 			break
@@ -73,57 +79,57 @@ ITERATION_COUNT=0
 function monitor_primary_nodes() {
 if [ $(get_pg_primary_count) -gt 1 ]
 
-then    
-   # Loggin if true 
+then
+   # Loggin if true
 
     echo "SAFEWALK REPMGR MONITOR ****** MORE THAN 1 DATABASE NODE IN PRIMARY MODE ******"
    # Print the actual state of the cluster
 
     POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
-    docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show
-    
-   # Wait 10 seconds for repmgr cluseter timeouts
-    wait_and_check 
+    cat $DATA
 
-	if [ $(get_pg_primary_count) -gt 1 ] 
+   # Wait 10 seconds for repmgr cluseter timeouts
+    wait_and_check
+
+	if [ $(get_pg_primary_count) -gt 1 ]
 	then
    		# Print the actual state of the cluster
     		 POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
-		 docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show
+		 cat $DATA
 		 echo "*** REPMGR cluster show before service update ****"
 			if [ -f "$STOP_FIXING" ]
 			then
 				echo "STOPPING FIXING THE CLUSTER TOO MUCH ATTEMPTS **** CALL ALTIPEAK SUPPORT INMEDIATLY!."
 			else
-				docker service update database_$(get_pg_to_fix) --force 
+				echo "docker service update database_$(get_pg_to_fix) --force"
 				echo "$(date): Cluster fixed at current time - No more attemtps will be performed." > /tmp/stop
 			fi
 		# docker service update database_$(get_pg_to_fix) --force
-		
+
 		# Waiting 30 seconds after the restart
 		 sleep 30
-		 
+
 		 echo "*** REPMGR cluster show after service update ****"
-		
+
    		# Print the state of the cluster after the restart
     		 POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
-		 docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show
+		 cat $DATA
 
 	else
-	
+
   		echo "INFO: The number of primary repmgr nodes are ok - do nothing"
 	fi
 
 else
 	echo "INFO: The number of PG in primary is: $(get_pg_primary_count)  - do nothing"
     	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
-  	docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show
+  	cat $DATA
 fi
 }
 
 # Main program
 
-while : 
+while :
 
 do
 
