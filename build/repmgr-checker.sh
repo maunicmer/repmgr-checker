@@ -26,7 +26,7 @@ function email_notifications () {
     swaks --to "$RECIPIENTS" \
          --from "$SMTP_USER" \
          --subject "SAFEWALK MT - REPMGR CLUSTER FIX" \
-         --body ""$(date): Cluster fixed at current time - No more attemtps will be performed." \
+         --body "$(date): Cluster fixed at current time - No more attemtps will be performed." \
          --server "$SMTP_SERVER" \
          --port "$SMTP_PORT" \
          --auth LOGIN \
