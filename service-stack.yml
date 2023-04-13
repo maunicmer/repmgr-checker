@@ -6,8 +6,17 @@ services:
     restart: always
     volumes:
             - /var/run/docker.sock:/var/run/docker.sock
+    secrets:
+       - smtp_user
+       - smtp_password
     environment:
             - CHECK_FREQUENCY=60
+            - EMAIL_NOTIFICATION=yes
+            - RECIPIENTS=mauro.mercuri@altipeak.com
+            - SMTP_SERVER=smtp.zoho.com
+            - SMTP_PORT=587
+            - SMTP_USER=/run/secrets/smtp_user
+            - SMTP_PASSWORD=/run/secrets/smtp_password
     deploy:
       replicas: 1
         #      placement:

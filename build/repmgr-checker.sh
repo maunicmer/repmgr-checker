@@ -3,6 +3,7 @@
 #Environment variables
 
 CHECK_FREQUENCY=${CHECK_FREQUENCY:-60}
+EMAIL_NOTIFICATIONS=${EMAIL_NOTIFICATIONS:-no}
 
 # Get the local pg ID
 
@@ -11,6 +12,31 @@ POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
 # Flag to stop script execution
 
 STOP_FIXING="/tmp/stop"
+
+function email_notifications () {
+ # Check if the environment variable is set to "yes"
+  if [[ "$EMAIL_NOTIFICATIONS" == "yes" ]]; then
+    # Define the email parameters
+    to="to@example.com"
+    from="from@example.com"
+    subject="Subject of the email"
+    body="Body of the email"
+
+    # Use swaks to send the email
+    swaks --to "$RECIPIENTS" \
+         --from "$SMTP_USER" \
+         --subject "SAFEWALK MT - REPMGR CLUSTER FIX" \
+         --body ""$(date): Cluster fixed at current time - No more attemtps will be performed." \
+         --server "$SMTP_SERVER" \
+         --port "$SMTP_PORT" \
+         --auth LOGIN \
+         --auth-user "$SMTP_USER" \
+         --auth-password "$SMTP_PASSWORD"
+  else
+    echo "EMAIL_NOTIFICATIONS environment variable is not set to 'yes'. Skipping email send."
+  fi
+
+}
 
 function get_pg_primary_count () {
 
@@ -97,6 +123,7 @@ then
 			else
 				docker service update database_$(get_pg_to_fix) --force 
 				echo "$(date): Cluster fixed at current time - No more attemtps will be performed." > /tmp/stop
+				email_notifications
 			fi
 		# docker service update database_$(get_pg_to_fix) --force
 		
@@ -118,6 +145,7 @@ else
 	echo "INFO: The number of PG in primary is: $(get_pg_primary_count)  - do nothing"
     	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
   	docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show
+	email_notifications
 fi
 }
 
