@@ -17,21 +17,27 @@ function email_notifications () {
  # Check if the environment variable is set to "yes"
   if [[ "$EMAIL_NOTIFICATIONS" == "yes" ]]; then
     # Define the email parameters
-    to="to@example.com"
-    from="from@example.com"
-    subject="Subject of the email"
-    body="Body of the email"
-
     # Use swaks to send the email
-    swaks --to "$RECIPIENTS" \
-         --from "$SMTP_USER" \
-         --subject "SAFEWALK MT - REPMGR CLUSTER FIX" \
-         --body "$(date): Cluster fixed at current time - No more attemtps will be performed." \
-         --server "$SMTP_SERVER" \
-         --port "$SMTP_PORT" \
-         --auth LOGIN \
-         --auth-user "$SMTP_USER" \
-         --auth-password "$SMTP_PASSWORD"
+	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
+	CLUSTER_SHOW="$(docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show)"
+
+BODY="$(cat <<EOF
+
+Cluster fixed at current time - No more attemtps will be performed.
+
+$CLUSTER_SHOW
+
+EOF
+)"
+	swaks --to "$RECIPIENTS" \
+      	      --from "$SMTP_USER" \
+      	      --header 'Subject: SAFEWALK MT - REPMGR CLUSTER FIX' \
+              --body "$BODY" \
+              --server "$SMTP_SERVER" \
+              --port "$SMTP_PORT" \
+              --auth-user "$SMTP_USER" \
+              --auth-password "$SMTP_PASSWORD" \
+              --tls
   else
     echo "EMAIL_NOTIFICATIONS environment variable is not set to 'yes'. Skipping email send."
   fi
@@ -145,7 +151,6 @@ else
 	echo "INFO: The number of PG in primary is: $(get_pg_primary_count)  - do nothing"
     	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
   	docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show
-	email_notifications
 fi
 }
 
