@@ -44,3 +44,36 @@ repmgr-checker-service_repmgr-checker.1.kgw55ehxrqei@MT-QA-Node-LAN-1    |  1001
 repmgr-checker-service_repmgr-checker.1.kgw55ehxrqei@MT-QA-Node-LAN-1    |  1002 | pg-2 | standby |   running | pg-0     | default  | 100      | 7        | user=repmgr password=repmgrpassword host=pg-2 dbname=repmgr port=5432 connect_timeout=5
 ```
 
+
+## Environment Variables
+
+To run this project, you will need to add the following environment variables to your .env file
+
+`CHECK_FREQUENCY`
+
+The interval in seconds between the service checks the output of cluster show to detect multiple primary nodes, defaul value '60'
+
+`EMAIL_NOTIFICATIONS`
+
+Enable email notifications if a cluster fix is performed, defaul value 'no'
+
+`RECIPIENTS`
+
+List of email recipients for email notifications, comma separated
+
+`SMTP_SERVER`
+
+The SMTP server address for email notifications, is recommended to use a dns name instead of IP address
+
+`SMTP_PORT`
+
+The SMTP server port
+
+`SMTP_USER`
+
+The SMTP user for authentication
+
+`SMTP_PASSWORD`
+
+The SMTP authentication password
+
