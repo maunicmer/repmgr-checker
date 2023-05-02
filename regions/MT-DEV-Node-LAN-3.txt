@@ -1,0 +1,14 @@
+postgresql-repmgr 13:56:50.86
+postgresql-repmgr 13:56:50.86 Welcome to the Bitnami postgresql-repmgr container
+postgresql-repmgr 13:56:50.86 Subscribe to project updates by watching https://github.com/bitnami/containers
+postgresql-repmgr 13:56:50.86 Submit issues and feature requests at https://github.com/bitnami/containers/issues
+postgresql-repmgr 13:56:50.87
+
+WARNING: following issues were detected
+  - node "pg-0" (ID: 1000) is running but the repmgr node record is inactive
+
+ ID   | Name  | Role    | Status    | Upstream | Location | Priority | Timeline | Connection string
+------+-------+---------+-----------+----------+----------+----------+----------+------------------------------------------------------------------------------------------
+ 1000 | pg-0  | primary | ! running |          | default  | 100      | 1        | user=repmgr password=repmgrpassword host=pg-0 dbname=repmgr port=5432 connect_timeout=5
+ 1001 | pg-1  | primary | * running |          | default  | 100      | 2        | user=repmgr password=repmgrpassword host=pg-1 dbname=repmgr port=5432 connect_timeout=5
+ 1003 | pgw-3 | witness | * running | pg-1     | default  | 0        | n/a      | user=repmgr password=repmgrpassword host=pgw-3 dbname=repmgr port=5432 connect_timeout=5

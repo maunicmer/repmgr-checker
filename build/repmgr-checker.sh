@@ -2,8 +2,10 @@
 
 #Environment variables
 
+VERSION=1.0
 CHECK_FREQUENCY=${CHECK_FREQUENCY:-60}
 EMAIL_NOTIFICATIONS=${EMAIL_NOTIFICATIONS:-no}
+DATABASE_NAME=${DATABASE_NAME:-database}
 
 # Get the local pg ID
 
@@ -12,6 +14,18 @@ POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
 # Flag to stop script execution
 
 STOP_FIXING="/tmp/stop"
+
+function email_notification_starting () {
+	swaks --to "$RECIPIENTS" \
+      	      --from "$SMTP_USER" \
+      	      --header 'Subject: *** SAFEWALK MT - REPMGR-CHECKER STARTING INSTANCE: $DATABASE_NAME ***' \
+              --body "$BODY" \
+              --server "$SMTP_SERVER" \
+              --port "$SMTP_PORT" \
+              --auth-user "$SMTP_USER" \
+              --auth-password "$SMTP_PASSWORD" \
+              --tls
+}
 
 function email_notifications () {
  # Check if the environment variable is set to "yes"
@@ -59,21 +73,21 @@ function get_pg_to_fix () {
 # This function is used to determine the PG server node to be restarted 
 
 	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
-	PG_TO_FIX="$(docker exec $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show | grep expected | awk -F " " '{print $13}' | sed 's/"\|)//g')"
+	PG_TO_FIX="$(docker exec $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show | awk -F '|' '$3 == " primary " {print}' | wc -l)"
 
 # IF PG_TO_FIX is NULL it means the repmgr-checker is not running on the same node PG must be fixed
 
-if [ -z "$PG_TO_FIX"  ]
+if [ "$PG_TO_FIX" -gt 1  ]
 
 then
 
 # This regular expresion takes the PG server tagged as "! running" which identifies the PG to be fixed
 
-	PG_TO_FIX="$(docker exec $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show |  grep \!\ running | awk -F "|" '{print $2}' | sed 's/^[[:blank:]]*//;s/[[:blank:]]*$//')"
+	PG_TO_FIX="$(docker exec $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show | awk -F '|' '$3 == " primary " {print}' |  grep '\!\ running' | awk -F "|" '{print $2}' | sed 's/^[[:blank:]]*//;s/[[:blank:]]*$//')"
 	echo $PG_TO_FIX
 else
 
-	PG_TO_FIX="$(docker exec $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show | grep expected | awk -F " " '{print $13}' | sed 's/"\|)//g')"
+	PG_TO_FIX="$(docker exec $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show | awk -F '|' '$3 == " primary " {print}' | awk -F "|" '{print $2}' | sed 's/^[[:blank:]]*//;s/[[:blank:]]*$//')"
 	echo $PG_TO_FIX
 fi
 
@@ -127,6 +141,7 @@ then
 			then
 				echo "STOPPING FIXING THE CLUSTER TOO MUCH ATTEMPTS **** CALL ALTIPEAK SUPPORT INMEDIATLY!."
 			else
+				echo "Restarting database_$(get_pg_to_fix).... "
 				docker service update database_$(get_pg_to_fix) --force 
 				echo "$(date): Cluster fixed at current time - No more attemtps will be performed." > /tmp/stop
 				email_notifications
@@ -160,6 +175,8 @@ while :
 
 do
 
+echo "repmgr-checker version - $VERSION"
+email_notification_starting
 monitor_primary_nodes
 sleep $CHECK_FREQUENCY
 
