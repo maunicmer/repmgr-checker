@@ -15,6 +15,7 @@ services:
             - smtp_user
             - smtp_password
     environment:
+            - DATABASE_NAME=database
             - CHECK_FREQUENCY=60
             - EMAIL_NOTIFICATIONS=yes
             - RECIPIENTS=mauro.mercuri@altipeak.com
