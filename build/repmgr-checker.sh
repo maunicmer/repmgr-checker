@@ -2,23 +2,31 @@
 
 #Environment variables
 
-VERSION=1.0
+VERSION=1.1
 CHECK_FREQUENCY=${CHECK_FREQUENCY:-60}
 EMAIL_NOTIFICATIONS=${EMAIL_NOTIFICATIONS:-no}
 DATABASE_NAME=${DATABASE_NAME:-database}
 
 # Get the local pg ID
 
-POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
+POSTGRES_CONTAINER_ID=$(docker ps | grep "${DATABASE_NAME}_pg-" | awk '{print $1}')
 
 # Flag to stop script execution
 
 STOP_FIXING="/tmp/stop"
 
 function email_notification_starting () {
+
+BODY="$(cat <<EOF
+
+REPMGR CHECKER service started for instance $DATABASE_NAME
+
+EOF
+)"
+
 	swaks --to "$RECIPIENTS" \
       	      --from "$SMTP_USER" \
-      	      --header 'Subject: *** SAFEWALK MT - REPMGR-CHECKER STARTING INSTANCE: $DATABASE_NAME ***' \
+      	      --header 'Subject: *** SAFEWALK MT - REPMGR-CHECKER STARTING INSTANCE: '$DATABASE_NAME' ***' \
               --body "$BODY" \
               --server "$SMTP_SERVER" \
               --port "$SMTP_PORT" \
@@ -32,20 +40,22 @@ function email_notifications () {
   if [[ "$EMAIL_NOTIFICATIONS" == "yes" ]]; then
     # Define the email parameters
     # Use swaks to send the email
-	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
+	POSTGRES_CONTAINER_ID=$(docker ps | grep "${DATABASE_NAME}_pg-" | awk '{print $1}')
 	CLUSTER_SHOW="$(docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show)"
 
 BODY="$(cat <<EOF
 
-Cluster fixed at current time - No more attemtps will be performed.
+Cluster "${DATABASE_NAME}" fixed at current time - No more attemtps will be performed.
 
 $CLUSTER_SHOW
+
+Check if the ouput shows more than 1 node on "primary" mode if so, please let us now at support@altipeak.com
 
 EOF
 )"
 	swaks --to "$RECIPIENTS" \
       	      --from "$SMTP_USER" \
-      	      --header 'Subject: SAFEWALK MT - REPMGR CLUSTER FIX' \
+      	      --header 'Subject: *** SAFEWALK MT - REPMGR CLUSTER FIX '$DATABASE_NAME' ***' \
               --body "$BODY" \
               --server "$SMTP_SERVER" \
               --port "$SMTP_PORT" \
@@ -60,7 +70,7 @@ EOF
 
 function get_pg_primary_count () {
 
-	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
+	POSTGRES_CONTAINER_ID=$(docker ps | grep "${DATABASE_NAME}_pg-" | awk '{print $1}')
 	PG_NODE_COUNT="$(docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show | grep default | grep "primary" | grep "running" | wc -l)"
 #	PG_NODE_COUNT=$(cat cluster_show_dummy | grep default | grep "primary" | wc -l)
 	echo $PG_NODE_COUNT
@@ -72,7 +82,7 @@ function get_pg_to_fix () {
 
 # This function is used to determine the PG server node to be restarted 
 
-	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
+	POSTGRES_CONTAINER_ID=$(docker ps | grep "${DATABASE_NAME}_pg-" | awk '{print $1}')
 	PG_TO_FIX="$(docker exec $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show | awk -F '|' '$3 == " primary " {print}' | wc -l)"
 
 # IF PG_TO_FIX is NULL it means the repmgr-checker is not running on the same node PG must be fixed
@@ -125,7 +135,7 @@ then
     echo "SAFEWALK REPMGR MONITOR ****** MORE THAN 1 DATABASE NODE IN PRIMARY MODE ******"
    # Print the actual state of the cluster
 
-    POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
+    POSTGRES_CONTAINER_ID=$(docker ps | grep "${DATABASE_NAME}_pg-" | awk '{print $1}')
     docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show
     
    # Wait 10 seconds for repmgr cluseter timeouts
@@ -134,15 +144,15 @@ then
 	if [ $(get_pg_primary_count) -gt 1 ] 
 	then
    		# Print the actual state of the cluster
-    		 POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
+    		 POSTGRES_CONTAINER_ID=$(docker ps | grep "${DATABASE_NAME}_pg-" | awk '{print $1}')
 		 docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show
 		 echo "*** REPMGR cluster show before service update ****"
 			if [ -f "$STOP_FIXING" ]
 			then
-				echo "STOPPING FIXING THE CLUSTER TOO MUCH ATTEMPTS **** CALL ALTIPEAK SUPPORT INMEDIATLY!."
+				echo "STOPPING FIXING THE CLUSTER ${DATABASE_NAME} TOO MUCH ATTEMPTS **** CALL ALTIPEAK SUPPORT INMEDIATLY!."
 			else
-				echo "Restarting database_$(get_pg_to_fix).... "
-				docker service update database_$(get_pg_to_fix) --force 
+				echo "Restarting ${DATABASE_NAME}_$(get_pg_to_fix).... "
+				docker service update ${DATABASE_NAME}_$(get_pg_to_fix) --force 
 				echo "$(date): Cluster fixed at current time - No more attemtps will be performed." > /tmp/stop
 				email_notifications
 			fi
@@ -154,7 +164,7 @@ then
 		 echo "*** REPMGR cluster show after service update ****"
 		
    		# Print the state of the cluster after the restart
-    		 POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
+    		 POSTGRES_CONTAINER_ID=$(docker ps | grep "${DATABASE_NAME}_pg-" | awk '{print $1}')
 		 docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show
 
 	else
@@ -164,19 +174,23 @@ then
 
 else
 	echo "INFO: The number of PG in primary is: $(get_pg_primary_count)  - do nothing"
-    	POSTGRES_CONTAINER_ID=$(docker ps | grep "database_pg-" | awk '{print $1}')
+    	POSTGRES_CONTAINER_ID=$(docker ps | grep "${DATABASE_NAME}_pg-" | awk '{print $1}')
   	docker exec  $POSTGRES_CONTAINER_ID /opt/bitnami/scripts/postgresql-repmgr/entrypoint.sh repmgr -f /opt/bitnami/repmgr/conf/repmgr.conf  cluster show
 fi
 }
 
 # Main program
 
+echo "repmgr-checker version - $VERSION"
+
+### email notification starting the service
+email_notification_starting
+
 while : 
 
 do
 
 echo "repmgr-checker version - $VERSION"
-email_notification_starting
 monitor_primary_nodes
 sleep $CHECK_FREQUENCY
 
