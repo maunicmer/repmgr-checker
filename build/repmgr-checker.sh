@@ -1,10 +1,13 @@
 #!/bin/bash -e
-
+############################
+## This repmgr-checker-dummy.sh to test based on $1 input
+############################
 #Environment variables
 
 VERSION=1.1
 CHECK_FREQUENCY=${CHECK_FREQUENCY:-60}
 EMAIL_NOTIFICATIONS=${EMAIL_NOTIFICATIONS:-no}
+$EMAIL_NOTIFICATIONS_TLS=${$EMAIL_NOTIFICATIONS_TLS:-no}
 DATABASE_NAME=${DATABASE_NAME:-database}
 
 # Get the local pg ID
@@ -16,7 +19,11 @@ POSTGRES_CONTAINER_ID=$(docker ps | grep "${DATABASE_NAME}_pg-" | awk '{print $1
 STOP_FIXING="/tmp/stop"
 
 function email_notification_starting () {
-
+# Check if the environment variable is set to "yes"
+	if [[ "$EMAIL_NOTIFICATIONS" == "yes" ]]; then
+#Check if EMAIL_NOTIFICATIONS_TLS is set to yes
+		if [[ "$EMAIL_NOTIFICATIONS_TLS" == "yes" ]]; then
+echo "Using TLS authentication for email notifications"
 BODY="$(cat <<EOF
 
 REPMGR CHECKER service started for instance $DATABASE_NAME
@@ -25,14 +32,38 @@ EOF
 )"
 
 	swaks --to "$RECIPIENTS" \
-      	      --from "$SMTP_USER" \
-      	      --header 'Subject: *** SAFEWALK MT - REPMGR-CHECKER STARTING INSTANCE: '$DATABASE_NAME' ***' \
-              --body "$BODY" \
-              --server "$SMTP_SERVER" \
-              --port "$SMTP_PORT" \
-              --auth-user "$SMTP_USER" \
-              --auth-password "$SMTP_PASSWORD" \
-              --tls
+			--from "$SMTP_USER" \
+			--header 'Subject: *** SAFEWALK MT - REPMGR-CHECKER STARTING INSTANCE: '$DATABASE_NAME' ***' \
+			--body "$BODY" \
+			--server "$SMTP_SERVER" \
+			--port "$SMTP_PORT" \
+			--auth-user "$SMTP_USER" \
+			--auth-password "$SMTP_PASSWORD" \
+			--tls
+		else
+echo "Using plain authentication for email notifications"
+BODY="$(cat <<EOF
+
+REPMGR CHECKER service started for instance $DATABASE_NAME
+
+EOF
+)"
+
+	swaks --to "$RECIPIENTS" \
+			--from "$SMTP_USER" \
+			--header 'Subject: *** SAFEWALK MT - REPMGR-CHECKER STARTING INSTANCE: '$DATABASE_NAME' ***' \
+			--body "$BODY" \
+			--server "$SMTP_SERVER" \
+			--port "$SMTP_PORT" \
+			--auth-user "$SMTP_USER" \
+			--auth-password "$SMTP_PASSWORD" \	
+		fi
+
+  else
+    echo "EMAIL_NOTIFICATIONS environment variable is not set to 'no'. Skipping email send."
+  fi
+
+
 }
 
 function email_notifications () {
@@ -63,7 +94,7 @@ EOF
               --auth-password "$SMTP_PASSWORD" \
               --tls
   else
-    echo "EMAIL_NOTIFICATIONS environment variable is not set to 'yes'. Skipping email send."
+    echo "EMAIL_NOTIFICATIONS environment variable is not set to 'no'. Skipping email send."
   fi
 
 }
