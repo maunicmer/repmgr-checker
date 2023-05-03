@@ -7,13 +7,10 @@ secrets:
      external: true
 services:
   repmgr-checker:
-    image: altipeak/repmgr-checker-service:dev
+    image: altipeak/repmgr-checker:dev-1.0
     restart: always
     volumes:
             - /var/run/docker.sock:/var/run/docker.sock
-    secrets:
-            - smtp_user
-            - smtp_password
     environment:
             - DATABASE_NAME=database
             - CHECK_FREQUENCY=60
