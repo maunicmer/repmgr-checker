@@ -15,11 +15,11 @@ services:
             - DATABASE_NAME=database
             - CHECK_FREQUENCY=60
             - EMAIL_NOTIFICATIONS=yes
-            - RECIPIENTS=mauro.mercuri@altipeak.com
-            - SMTP_SERVER=smtp.zoho.com
-            - SMTP_PORT=587
-            - SMTP_USER=automation@altipeaksecurity.com
-            - SMTP_PASSWORD=0nGTdpt2VAzD
+            - RECIPIENTS=xxxx
+            - SMTP_SERVER=xxxxx
+            - SMTP_PORT=xxxxx
+            - SMTP_USER=xxxxx
+            - SMTP_PASSWORD=xxxxx
     deploy:
       replicas: 1
         #      placement:
