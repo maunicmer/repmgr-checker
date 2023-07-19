@@ -15,6 +15,7 @@ services:
             - DATABASE_NAME=database
             - CHECK_FREQUENCY=60
             - EMAIL_NOTIFICATIONS=yes
+            - EMAIL_NOTIFICATIONS=yes
             - RECIPIENTS=xxxx
             - SMTP_SERVER=xxxxx
             - SMTP_PORT=xxxxx
